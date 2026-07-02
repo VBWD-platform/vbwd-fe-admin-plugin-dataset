@@ -1,0 +1,66 @@
+{
+  "dataset": {
+    "title": "Datasets",
+    "nav": {
+      "datasets": "Datasets"
+    },
+    "list": {
+      "heading": "Datasets",
+      "new": "+ New Dataset",
+      "search": "Search datasets…",
+      "allCategories": "All categories",
+      "empty": "No datasets yet.",
+      "loading": "Loading datasets…"
+    },
+    "columns": {
+      "title": "Title",
+      "slug": "Slug",
+      "category": "Category",
+      "price": "Price",
+      "updated": "Updated",
+      "active": "Active",
+      "actions": "Actions"
+    },
+    "bulk": {
+      "assignCategory": "Assign to a category",
+      "activate": "Activate",
+      "deactivate": "Deactivate"
+    },
+    "status": {
+      "active": "Active",
+      "inactive": "Inactive"
+    },
+    "editor": {
+      "newHeading": "New Dataset",
+      "editHeading": "Edit Dataset",
+      "tabDetails": "Details",
+      "tabDataset": "Dataset",
+      "fieldTitle": "Title",
+      "fieldSlug": "Slug",
+      "fieldDescription": "Description",
+      "fieldSource": "Source attribution",
+      "fieldPrice": "Price",
+      "fieldTax": "Tax rate (%)",
+      "fieldCategory": "Category",
+      "addCategory": "Add category…",
+      "fieldPlan": "Plan that grants access",
+      "noPlan": "— No plan —",
+      "fieldActive": "Active",
+      "save": "Save",
+      "cancel": "Cancel",
+      "saveFirst": "Save the dataset first to manage snapshots, tags and custom fields."
+    },
+    "archive": {
+      "heading": "Data archive (snapshots)",
+      "takenAt": "Taken at",
+      "backend": "Backend",
+      "size": "Size",
+      "last": "last",
+      "empty": "No snapshots yet.",
+      "upload": "Upload snapshot",
+      "download": "Download",
+      "setLast": "Set as last",
+      "delete": "Delete"
+    }
+  }
+}

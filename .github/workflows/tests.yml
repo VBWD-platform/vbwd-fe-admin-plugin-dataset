@@ -1,0 +1,57 @@
+name: Tests
+
+on:
+  push:
+    branches: ['*']
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  ci:
+    name: CI — dataset (fe-admin)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Clone vbwd-fe-admin
+        uses: actions/checkout@v4
+        with:
+          repository: VBWD-platform/vbwd-fe-admin
+          ref: main
+          path: vbwd-fe-admin
+          submodules: recursive
+
+      - name: Clone plugin (under test)
+        uses: actions/checkout@v4
+        with:
+          path: vbwd-fe-admin/plugins/dataset
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Build fe-core submodule
+        working-directory: vbwd-fe-admin/vbwd-fe-core
+        run: npm install && npm run build
+
+      - name: Install dependencies
+        working-directory: vbwd-fe-admin
+        run: npm install
+
+      - name: Install ALL plugins (vue-tsc needs full project)
+        working-directory: vbwd-fe-admin/plugins
+        run: |
+          for entry in "analytics-widget:vbwd-fe-admin-plugin-analytics-widget" "cms-admin:vbwd-fe-admin-plugin-cms" "email-admin:vbwd-fe-admin-plugin-email" "ghrm-admin:vbwd-fe-admin-plugin-ghrm" "tarot-admin:vbwd-fe-admin-plugin-tarot" "subscription-admin:vbwd-fe-admin-plugin-subscription" "shop-admin:vbwd-fe-admin-plugin-shop" "discount-admin:vbwd-fe-admin-plugin-discount"; do
+            name="${entry%%:*}"; repo="${entry##*:}"
+            [ -d "$name" ] && continue
+            git clone --depth=1 -q "https://github.com/VBWD-platform/${repo}.git" "$name" 2>/dev/null || {
+              echo "Creating stub for $name (repo not found)"
+              mkdir -p "$name"
+              echo "export const ${name//-/}Plugin = { name: '${name}', version: '0.0.0', install() {}, activate() {}, deactivate() {} };" > "$name/index.ts"
+            }
+          done
+
+      - name: Run pre-commit (style + unit) for dataset plugin
+        working-directory: vbwd-fe-admin
+        run: ./bin/pre-commit-check.sh --plugin dataset --unit

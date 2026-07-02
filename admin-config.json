@@ -1,0 +1,23 @@
+{
+  "tabs": [
+    {
+      "id": "general",
+      "label": "General",
+      "fields": [
+        {
+          "key": "debug_mode",
+          "label": "Debug Mode",
+          "component": "checkbox"
+        },
+        {
+          "key": "datasetsPerPage",
+          "label": "Datasets Per Page",
+          "component": "input",
+          "inputType": "number",
+          "min": 5,
+          "max": 100
+        }
+      ]
+    }
+  ]
+}
