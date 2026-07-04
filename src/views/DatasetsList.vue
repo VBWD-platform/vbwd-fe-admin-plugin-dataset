@@ -2,14 +2,30 @@
   <div class="dataset-view dataset-list">
     <div class="view-header">
       <h2>{{ $t('dataset.list.heading') }}</h2>
-      <router-link
-        v-if="canManage"
-        :to="{ name: 'dataset-new' }"
-        class="create-btn"
-        data-testid="dataset-new"
-      >
-        {{ $t('dataset.list.new') }}
-      </router-link>
+      <div class="view-header__actions">
+        <!-- Unified data-exchange controls — driven by the permission-filtered manifest. -->
+        <ImportExportControls
+          v-if="showImportExport"
+          :api="dataExchangeApi"
+          entity-key="dataset"
+          :selected-ids="selectedDatasetIds"
+          :filter-state="filterParams()"
+          :can-export="datasetCapabilities.can_export"
+          :can-import="datasetCapabilities.can_import"
+          :can-export-pii="datasetCapabilities.can_export_pii"
+          :is-superadmin="isSuperadmin"
+          :supported-formats="datasetCapabilities.supported_formats"
+          @refresh="load"
+        />
+        <router-link
+          v-if="canManage"
+          :to="{ name: 'dataset-new' }"
+          class="create-btn"
+          data-testid="dataset-new"
+        >
+          {{ $t('dataset.list.new') }}
+        </router-link>
+      </div>
     </div>
 
     <!-- Filters: quicksearch (300ms debounce) + by-category selector. -->
@@ -258,10 +274,14 @@ import { useCmsBulkSelection } from '../../../cms-admin/src/composables/useCmsBu
 import CmsBulkBar from '../../../cms-admin/src/components/CmsBulkBar.vue';
 import CmsSelectAllTh from '../../../cms-admin/src/components/CmsSelectAllTh.vue';
 import CmsSortableTh from '../../../cms-admin/src/components/CmsSortableTh.vue';
+import { ImportExportControls } from 'vbwd-view-component';
+import { createDataExchangeApi } from '@/api/dataExchangeApi';
+import { useDataExchangeManifest } from '@/composables/useDataExchangeManifest';
 
 const PER_PAGE = 20;
 const SEARCH_DEBOUNCE_MS = 300;
 const BULK_CATEGORY_RESET = '';
+const DATASET_ENTITY_KEY = 'dataset';
 
 const router = useRouter();
 const store = useDatasetStore();
@@ -340,6 +360,19 @@ const bulk = useCmsBulkSelection({
   fetchAllIds: () => store.fetchAllDatasetIds(filterParams()),
 });
 
+// ── Unified data-exchange controls ─────────────────────────────────────────
+// The dataset backend registers a `dataset` exchanger; the per-list control
+// derives its capabilities from the permission-filtered manifest and reuses
+// the existing bulk selection for "Export selected".
+const dataExchangeApi = createDataExchangeApi();
+const isSuperadmin = computed(() => authStore.isSuperAdmin);
+const { load: loadManifest, capabilitiesFor } = useDataExchangeManifest();
+const datasetCapabilities = computed(() => capabilitiesFor(DATASET_ENTITY_KEY));
+const showImportExport = computed(
+  () => datasetCapabilities.value.can_export || datasetCapabilities.value.can_import,
+);
+const selectedDatasetIds = computed(() => [...bulk.selected.value]);
+
 async function bulkDelete(): Promise<void> {
   const ids = await bulk.resolveIds();
   if (!ids.length || !confirm(`Delete ${ids.length} selected dataset(s)?`)) return;
@@ -376,6 +409,7 @@ async function deleteOne(id: string): Promise<void> {
 
 onMounted(async () => {
   await store.fetchCategoryTerms();
+  void loadManifest();
   load();
 });
 </script>
@@ -392,6 +426,12 @@ onMounted(async () => {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 20px;
+}
+
+.view-header__actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
 }
 
 .view-header h2 {

@@ -3,6 +3,7 @@ import { mount, flushPromises, type VueWrapper } from '@vue/test-utils';
 import { setActivePinia, createPinia } from 'pinia';
 import { createI18n } from 'vue-i18n';
 import { createRouter, createMemoryHistory, type Router } from 'vue-router';
+import { defineComponent, ref } from 'vue';
 import { api } from '@/api';
 import { configureAuthStore, useAuthStore } from '@/stores/auth';
 import DatasetsList from '../../src/views/DatasetsList.vue';
@@ -17,6 +18,26 @@ vi.mock('@/api', () => ({
     delete: vi.fn(),
   },
 }));
+
+// Permission-filtered data-exchange manifest, mocked so the dataset list's
+// ImportExportControls capabilities are driven per-test (mirrors CmsContentList).
+const datasetCapabilities = ref<Record<string, { can_export: boolean; can_import: boolean; can_export_pii: boolean; supported_formats: string[] }>>({});
+const loadManifest = vi.fn().mockResolvedValue(undefined);
+
+vi.mock('@/composables/useDataExchangeManifest', () => ({
+  useDataExchangeManifest: () => ({
+    load: loadManifest,
+    capabilitiesFor: (key: string) =>
+      datasetCapabilities.value[key] ?? { can_export: false, can_import: false, can_export_pii: false, supported_formats: ['json'] },
+  }),
+}));
+
+const ImportExportControlsStub = defineComponent({
+  name: 'ImportExportControls',
+  props: ['api', 'entityKey', 'selectedIds', 'filterState', 'canExport', 'canImport', 'canExportPii', 'isSuperadmin', 'supportedFormats'],
+  emits: ['refresh'],
+  template: '<div data-testid="iec-stub" />',
+});
 
 const i18n = createI18n({
   legacy: false,
@@ -65,7 +86,7 @@ async function mountList(): Promise<{ wrapper: VueWrapper; router: Router }> {
   router.push({ name: 'dataset-list' });
   await router.isReady();
   const wrapper = mount(DatasetsList, {
-    global: { plugins: [i18n, router] },
+    global: { plugins: [i18n, router], stubs: { ImportExportControls: ImportExportControlsStub } },
   });
   await flushPromises();
   return { wrapper, router };
@@ -83,6 +104,7 @@ describe('DatasetsList.vue', () => {
       token: 'test-token',
     });
     vi.clearAllMocks();
+    datasetCapabilities.value = {};
   });
 
   it('fetches the dataset list on mount', async () => {
@@ -189,5 +211,40 @@ describe('DatasetsList.vue', () => {
     const push = vi.spyOn(router, 'push');
     await wrapper.find('[data-testid="dataset-row"]').trigger('click');
     expect(push).toHaveBeenCalledWith({ name: 'dataset-edit', params: { id: 'ds-1' } });
+  });
+
+  it('wires ImportExportControls with entity-key="dataset" and manifest-derived caps', async () => {
+    datasetCapabilities.value = {
+      dataset: { can_export: true, can_import: true, can_export_pii: false, supported_formats: ['json'] },
+    };
+    const { wrapper } = await mountList();
+    const control = wrapper.findComponent(ImportExportControlsStub);
+    expect(control.exists()).toBe(true);
+    expect(control.props('entityKey')).toBe('dataset');
+    expect(control.props('canExport')).toBe(true);
+    expect(control.props('canImport')).toBe(true);
+  });
+
+  it('hides ImportExportControls when the manifest grants no dataset capabilities', async () => {
+    datasetCapabilities.value = {
+      dataset: { can_export: false, can_import: false, can_export_pii: false, supported_formats: ['json'] },
+    };
+    const { wrapper } = await mountList();
+    expect(wrapper.findComponent(ImportExportControlsStub).exists()).toBe(false);
+  });
+
+  it('flows the bulk selection into ImportExportControls selectedIds', async () => {
+    datasetCapabilities.value = {
+      dataset: { can_export: true, can_import: true, can_export_pii: false, supported_formats: ['json'] },
+    };
+    const { wrapper } = await mountList();
+    await wrapper.find('[data-testid="row-select-ds-1"]').setValue(true);
+    await flushPromises();
+    expect(wrapper.findComponent(ImportExportControlsStub).props('selectedIds')).toEqual(['ds-1']);
+  });
+
+  it('loads the data-exchange manifest on mount', async () => {
+    await mountList();
+    expect(loadManifest).toHaveBeenCalled();
   });
 });
