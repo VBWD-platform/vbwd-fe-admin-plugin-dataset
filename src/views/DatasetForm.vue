@@ -198,7 +198,7 @@
       </template>
     </div>
 
-    <!-- Dataset (file-archive) pane -->
+    <!-- Dataset (file-archive) pane — each snapshot row opens its own data page. -->
     <div
       v-show="activeTab === 'archive'"
       class="pane"

@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { mount, flushPromises, type VueWrapper } from '@vue/test-utils';
 import { setActivePinia, createPinia } from 'pinia';
 import { createI18n } from 'vue-i18n';
+import { createRouter, createMemoryHistory, type Router } from 'vue-router';
 import { api } from '@/api';
 import DatasetSnapshotArchive from '../../src/components/DatasetSnapshotArchive.vue';
 import hostEn from '@/i18n/locales/en.json';
@@ -32,11 +33,21 @@ function primeApi() {
   (api.get as ReturnType<typeof vi.fn>).mockResolvedValue(SNAPSHOTS);
 }
 
+function makeRouter(): Router {
+  return createRouter({
+    history: createMemoryHistory(),
+    routes: [
+      { path: '/admin/datasets/:id', name: 'dataset-edit', component: { template: '<div />' } },
+      { path: '/admin/datasets/:datasetId/snapshots/:snapshotId', name: 'dataset-snapshot-view', component: { template: '<div />' } },
+    ],
+  });
+}
+
 async function mountArchive(lastSnapshotId = 'snap-2'): Promise<VueWrapper> {
   primeApi();
   const wrapper = mount(DatasetSnapshotArchive, {
     props: { datasetId: 'ds-1', lastSnapshotId },
-    global: { plugins: [i18n] },
+    global: { plugins: [i18n, makeRouter()] },
   });
   await flushPromises();
   return wrapper;
@@ -89,6 +100,50 @@ describe('DatasetSnapshotArchive.vue — file-archive block', () => {
     await wrapper.find('[data-testid="snapshot-delete-snap-1"]').trigger('click');
     await flushPromises();
     expect(api.delete).toHaveBeenCalledWith('/admin/datasets/ds-1/snapshots/snap-1');
+  });
+
+  it('navigates to the snapshot data page when a row is clicked', async () => {
+    primeApi();
+    const router = makeRouter();
+    const pushSpy = vi.spyOn(router, 'push');
+    const wrapper = mount(DatasetSnapshotArchive, {
+      props: { datasetId: 'ds-1', lastSnapshotId: 'snap-2' },
+      global: { plugins: [i18n, router] },
+    });
+    await flushPromises();
+
+    await wrapper.findAll('[data-testid="snapshot-row"]')[1].trigger('click');
+    expect(pushSpy).toHaveBeenCalledWith({
+      name: 'dataset-snapshot-view',
+      params: { datasetId: 'ds-1', snapshotId: 'snap-1' },
+    });
+  });
+
+  it('does NOT navigate when a row action (download/delete/set-last) is clicked', async () => {
+    primeApi();
+    (api.delete as ReturnType<typeof vi.fn>).mockResolvedValue({});
+    (api.post as ReturnType<typeof vi.fn>).mockResolvedValue({});
+    const csv = new Blob(['a\n1\n'], { type: 'text/csv' });
+    (api.get as ReturnType<typeof vi.fn>).mockResolvedValue(SNAPSHOTS);
+    const router = makeRouter();
+    const pushSpy = vi.spyOn(router, 'push');
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const createObjectURL = vi.fn().mockReturnValue('blob:mock');
+    vi.stubGlobal('URL', { createObjectURL, revokeObjectURL: vi.fn() });
+    const wrapper = mount(DatasetSnapshotArchive, {
+      props: { datasetId: 'ds-1', lastSnapshotId: 'snap-2' },
+      global: { plugins: [i18n, router] },
+    });
+    await flushPromises();
+
+    (api.get as ReturnType<typeof vi.fn>).mockResolvedValueOnce(csv);
+    await wrapper.find('[data-testid="snapshot-download-snap-2"]').trigger('click');
+    await wrapper.find('[data-testid="snapshot-set-last-snap-1"]').trigger('click');
+    await wrapper.find('[data-testid="snapshot-delete-snap-1"]').trigger('click');
+    await flushPromises();
+
+    expect(pushSpy).not.toHaveBeenCalled();
+    vi.unstubAllGlobals();
   });
 
   it('downloads a snapshot as a blob (responseType) and names the file with its extension', async () => {

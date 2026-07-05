@@ -50,6 +50,32 @@
       "cancel": "Cancel",
       "saveFirst": "Save the dataset first to manage snapshots, tags and custom fields."
     },
+    "spreadsheet": {
+      "empty": "No data yet",
+      "loading": "Loading data…"
+    },
+    "snapshotView": {
+      "back": "← Back to dataset",
+      "snapshot": "Snapshot",
+      "prev": "Previous",
+      "next": "Next",
+      "pageSize": "Rows per page",
+      "decimals": "Decimals",
+      "statistic": "Statistic",
+      "rows": "Rows",
+      "reset": "Reset",
+      "save": "Save as new version",
+      "tooLargeToEdit": "Dataset too large to edit in-browser (read-only)",
+      "stats": {
+        "count": "Count",
+        "sum": "Sum",
+        "mean": "Mean",
+        "min": "Min",
+        "max": "Max",
+        "median": "Median",
+        "stddev": "Std dev"
+      }
+    },
     "archive": {
       "heading": "Data archive (snapshots)",
       "takenAt": "Taken at",

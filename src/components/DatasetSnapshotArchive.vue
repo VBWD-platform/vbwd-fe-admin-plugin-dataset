@@ -57,7 +57,14 @@
         <tr
           v-for="snapshot in snapshots"
           :key="snapshot.id"
+          class="snapshot-row"
           data-testid="snapshot-row"
+          role="button"
+          tabindex="0"
+          :aria-label="`Open ${snapshot.taken_at}`"
+          @click="openSnapshot(snapshot.id)"
+          @keydown.enter="openSnapshot(snapshot.id)"
+          @keydown.space.prevent="openSnapshot(snapshot.id)"
         >
           <td>
             {{ snapshot.taken_at }}
@@ -76,7 +83,7 @@
               type="button"
               class="action-btn"
               :data-testid="`snapshot-download-${snapshot.id}`"
-              @click="download(snapshot)"
+              @click.stop="download(snapshot)"
             >
               {{ $t('dataset.archive.download') }}
             </button>
@@ -85,7 +92,7 @@
               type="button"
               class="action-btn"
               :data-testid="`snapshot-set-last-${snapshot.id}`"
-              @click="setLast(snapshot.id)"
+              @click.stop="setLast(snapshot.id)"
             >
               {{ $t('dataset.archive.setLast') }}
             </button>
@@ -93,7 +100,7 @@
               type="button"
               class="action-btn danger"
               :data-testid="`snapshot-delete-${snapshot.id}`"
-              @click="remove(snapshot.id)"
+              @click.stop="remove(snapshot.id)"
             >
               {{ $t('dataset.archive.delete') }}
             </button>
@@ -106,12 +113,23 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
 import { useDatasetStore, type DatasetSnapshot } from '../stores/useDatasetStore';
 
 const props = defineProps<{
   datasetId: string;
   lastSnapshotId: string | null;
 }>();
+
+const router = useRouter();
+
+/** Open the dedicated data page for a snapshot (row-click / keyboard). */
+function openSnapshot(snapshotId: string): void {
+  void router.push({
+    name: 'dataset-snapshot-view',
+    params: { datasetId: props.datasetId, snapshotId },
+  });
+}
 
 const emit = defineEmits<{ (event: 'changed'): void }>();
 
@@ -257,6 +275,19 @@ defineExpose({ uploadSnapshotFile, reload });
   background: #f8f9fa;
   font-weight: 600;
   color: #2c3e50;
+}
+
+.snapshot-row {
+  cursor: pointer;
+}
+
+.snapshot-row:hover {
+  background: #f8fbff;
+}
+
+.snapshot-row:focus-visible {
+  outline: 2px solid #1d4ed8;
+  outline-offset: -2px;
 }
 
 .backend-cell {

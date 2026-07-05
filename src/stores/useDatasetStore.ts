@@ -53,6 +53,18 @@ export interface DatasetSnapshot {
   ingested_via: string;
 }
 
+/** One spreadsheet cell value as the row endpoint serialises it. */
+export type SpreadsheetCell = string | number | null;
+
+/** One server-paginated page of a snapshot's data rows. */
+export interface DatasetRowsPage {
+  columns: string[];
+  rows: SpreadsheetCell[][];
+  offset: number;
+  limit: number;
+  has_more: boolean;
+}
+
 export interface PaginatedDatasets {
   items: Dataset[];
   total: number;
@@ -216,8 +228,66 @@ export const useDatasetStore = defineStore('dataset-admin', {
       return this.snapshots;
     },
 
-    async uploadSnapshot(datasetId: string, formData: FormData): Promise<void> {
-      await api.post(`/admin/datasets/${datasetId}/snapshots`, formData);
+    /**
+     * One server-paginated page of a snapshot's data (NOT entitlement-gated).
+     * The endpoint streams only the requested window plus a peek line, so a
+     * tremendous file is never fully loaded; `has_more` (not a full count) is the
+     * pagination signal. The view drives Prev/Next by adjusting `offset`.
+     */
+    async fetchRows(
+      datasetId: string,
+      snapshotId: string,
+      offset: number,
+      limit: number,
+    ): Promise<DatasetRowsPage> {
+      const res = await api.get<unknown>(
+        `/admin/datasets/${datasetId}/snapshots/${snapshotId}/rows`,
+        { params: { offset, limit } },
+      );
+      const obj = res as Record<string, unknown> | null;
+      return {
+        columns: Array.isArray(obj?.columns) ? (obj?.columns as string[]) : [],
+        rows: Array.isArray(obj?.rows) ? (obj?.rows as SpreadsheetCell[][]) : [],
+        offset: typeof obj?.offset === 'number' ? (obj?.offset as number) : offset,
+        limit: typeof obj?.limit === 'number' ? (obj?.limit as number) : limit,
+        has_more: obj?.has_more === true,
+      };
+    },
+
+    /**
+     * Load EVERY row of a snapshot by paging the rows endpoint until
+     * ``has_more`` is false. Only used for small snapshots (size-gated by the
+     * caller) so the whole dataset can be sorted/filtered/edited safely — Save
+     * then cannot drop rows that were never loaded.
+     */
+    async fetchAllRows(
+      datasetId: string,
+      snapshotId: string,
+      pageSize = 500,
+    ): Promise<{ columns: string[]; rows: SpreadsheetCell[][] }> {
+      const rows: SpreadsheetCell[][] = [];
+      let columns: string[] = [];
+      let offset = 0;
+      for (;;) {
+        const page = await this.fetchRows(datasetId, snapshotId, offset, pageSize);
+        if (!columns.length) columns = page.columns;
+        rows.push(...page.rows);
+        if (!page.has_more || page.rows.length === 0) break;
+        offset += pageSize;
+      }
+      return { columns, rows };
+    },
+
+    async uploadSnapshot(
+      datasetId: string,
+      formData: FormData,
+    ): Promise<DatasetSnapshot | null> {
+      const res = await api.post<unknown>(
+        `/admin/datasets/${datasetId}/snapshots`,
+        formData,
+      );
+      const obj = res as Record<string, unknown> | null;
+      return obj && typeof obj.id === 'string' ? (obj as unknown as DatasetSnapshot) : null;
     },
 
     async setLastSnapshot(datasetId: string, snapshotId: string): Promise<void> {

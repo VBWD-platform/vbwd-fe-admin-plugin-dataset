@@ -69,6 +69,13 @@ export const datasetAdminPlugin: IPlugin = {
       component: () => import('./src/views/DatasetForm.vue'),
       meta: { requiredPermission: 'dataset.manage' },
     });
+    // A snapshot's data as a server-paginated spreadsheet (opened by row click).
+    sdk.addRoute({
+      path: 'datasets/:datasetId/snapshots/:snapshotId',
+      name: 'dataset-snapshot-view',
+      component: () => import('./src/views/DatasetSnapshotView.vue'),
+      meta: { requiredPermission: 'dataset.view' },
+    });
   },
 
   activate() {
