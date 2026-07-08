@@ -87,6 +87,25 @@
       "download": "Download",
       "setLast": "Set as last",
       "delete": "Delete"
+    },
+    "issueFiles": {
+      "heading": "Issue files",
+      "role": "Role",
+      "filename": "Filename",
+      "ext": "Type",
+      "size": "Size",
+      "contentType": "Content type",
+      "empty": "No files in this issue yet.",
+      "add": "Add file",
+      "delete": "Delete",
+      "primary": "Primary data file",
+      "confirmDelete": "Delete this file from the issue?",
+      "roles": {
+        "data": "Data",
+        "document": "Document",
+        "chart": "Chart",
+        "other": "Other"
+      }
     }
   }
 }

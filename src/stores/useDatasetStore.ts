@@ -53,6 +53,32 @@ export interface DatasetSnapshot {
   ingested_via: string;
 }
 
+/**
+ * The fixed set of roles a file inside an issue bundle can carry (S124). The
+ * primary data file is synthesised by the backend with role `data`; members are
+ * attached as document/chart/other (and may also be additional data files).
+ */
+export const SNAPSHOT_FILE_ROLES = ['data', 'document', 'chart', 'other'] as const;
+export type SnapshotFileRole = (typeof SNAPSHOT_FILE_ROLES)[number];
+
+/** Stable id the backend uses for the synthesised primary data entry. */
+export const PRIMARY_SNAPSHOT_FILE_ID = 'primary';
+
+/**
+ * One file inside an issue (snapshot) bundle as the admin files endpoint
+ * projects it. The primary data file appears as `{ id: "primary", role: "data" }`
+ * followed by the child member rows. The backend never leaks a raw `location`.
+ */
+export interface DatasetSnapshotFile {
+  id: string;
+  role: SnapshotFileRole | string;
+  filename: string;
+  ext: string;
+  content_type: string | null;
+  size_bytes: number;
+  checksum: string | null;
+}
+
 /** One spreadsheet cell value as the row endpoint serialises it. */
 export type SpreadsheetCell = string | number | null;
 
@@ -302,6 +328,52 @@ export const useDatasetStore = defineStore('dataset-admin', {
       return api.get<Blob>(
         `/admin/datasets/${datasetId}/snapshots/${snapshotId}/download`,
         { responseType: 'blob' },
+      );
+    },
+
+    // ── Issue files (multi-file bundle per snapshot, S124) ────────────────────
+    /** The uniform file list for one issue: primary data entry first, then members. */
+    async fetchSnapshotFiles(
+      datasetId: string,
+      snapshotId: string,
+    ): Promise<DatasetSnapshotFile[]> {
+      const res = await api.get<unknown>(
+        `/admin/datasets/${datasetId}/snapshots/${snapshotId}/files`,
+      );
+      return asArray<DatasetSnapshotFile>(res, 'files');
+    },
+
+    /**
+     * Attach an extra file to an issue via a multipart POST (mirrors the snapshot
+     * upload). A bad role / oversize / disallowed extension surfaces as a 400 that
+     * the caller is expected to catch and display.
+     */
+    async addSnapshotFile(
+      datasetId: string,
+      snapshotId: string,
+      file: File,
+      role: string,
+      filename?: string,
+    ): Promise<DatasetSnapshotFile> {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('role', role);
+      if (filename) formData.append('filename', filename);
+      const res = await api.post<unknown>(
+        `/admin/datasets/${datasetId}/snapshots/${snapshotId}/files`,
+        formData,
+      );
+      return res as DatasetSnapshotFile;
+    },
+
+    /** Remove a member file from an issue (the primary entry is not deletable). */
+    async deleteSnapshotFile(
+      datasetId: string,
+      snapshotId: string,
+      fileId: string,
+    ): Promise<void> {
+      await api.delete(
+        `/admin/datasets/${datasetId}/snapshots/${snapshotId}/files/${fileId}`,
       );
     },
 

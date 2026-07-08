@@ -164,6 +164,13 @@
         </select>
       </label>
     </div>
+
+    <!-- Issue bundle: the primary data file plus any attached members (S124). -->
+    <DatasetIssueFiles
+      :key="snapshotId"
+      :dataset-id="datasetId"
+      :snapshot-id="snapshotId"
+    />
   </div>
 </template>
 
@@ -171,6 +178,7 @@
 import { ref, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import DatasetSpreadsheet from '../components/DatasetSpreadsheet.vue';
+import DatasetIssueFiles from '../components/DatasetIssueFiles.vue';
 import { useDatasetStore } from '../stores/useDatasetStore';
 import {
   isNumericColumn,
