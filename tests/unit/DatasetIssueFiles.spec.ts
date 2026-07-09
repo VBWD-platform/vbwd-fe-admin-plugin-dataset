@@ -62,6 +62,69 @@ describe('DatasetIssueFiles.vue — issue file bundle panel', () => {
     expect(wrapper.find('[data-testid="issue-file-delete-f-1"]').exists()).toBe(true);
   });
 
+  it('offers a download control on every row, including the primary data file', async () => {
+    const wrapper = await mountPanel();
+    expect(wrapper.find('[data-testid="issue-file-download-primary"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="issue-file-download-f-1"]').exists()).toBe(true);
+    // The primary keeps its "Primary data file" note alongside the new download.
+    expect(wrapper.find('[data-testid="issue-file-primary-primary"]').exists()).toBe(true);
+    // Delete stays hidden for the primary only.
+    expect(wrapper.find('[data-testid="issue-file-delete-primary"]').exists()).toBe(false);
+  });
+
+  it('downloads a file as a blob via the store then triggers a named anchor download', async () => {
+    const wrapper = await mountPanel();
+    const pdf = new Blob(['%PDF'], { type: 'application/pdf' });
+    (api.get as ReturnType<typeof vi.fn>).mockResolvedValueOnce(pdf);
+
+    const createObjectURL = vi.fn().mockReturnValue('blob:mock');
+    const revokeObjectURL = vi.fn();
+    vi.stubGlobal('URL', { createObjectURL, revokeObjectURL });
+    const clicks: string[] = [];
+    const clickSpy = vi
+      .spyOn(HTMLAnchorElement.prototype, 'click')
+      .mockImplementation(function (this: HTMLAnchorElement) {
+        clicks.push(this.getAttribute('download') ?? '');
+      });
+
+    await wrapper.find('[data-testid="issue-file-download-f-1"]').trigger('click');
+    await flushPromises();
+
+    expect(api.get).toHaveBeenCalledWith(
+      '/admin/datasets/ds-1/snapshots/snap-1/files/f-1/download',
+      { responseType: 'blob' },
+    );
+    expect(createObjectURL).toHaveBeenCalledWith(pdf);
+    expect(revokeObjectURL).toHaveBeenCalledWith('blob:mock');
+    expect(clicks).toEqual(['report.pdf']);
+
+    clickSpy.mockRestore();
+    vi.unstubAllGlobals();
+  });
+
+  it('downloads the primary data file via its "primary" id', async () => {
+    const wrapper = await mountPanel();
+    const csv = new Blob(['a,b\n1,2\n'], { type: 'text/csv' });
+    (api.get as ReturnType<typeof vi.fn>).mockResolvedValueOnce(csv);
+    const createObjectURL = vi.fn().mockReturnValue('blob:mock');
+    vi.stubGlobal('URL', { createObjectURL, revokeObjectURL: vi.fn() });
+    const clickSpy = vi
+      .spyOn(HTMLAnchorElement.prototype, 'click')
+      .mockImplementation(() => undefined);
+
+    await wrapper.find('[data-testid="issue-file-download-primary"]').trigger('click');
+    await flushPromises();
+
+    expect(api.get).toHaveBeenCalledWith(
+      '/admin/datasets/ds-1/snapshots/snap-1/files/primary/download',
+      { responseType: 'blob' },
+    );
+    expect(createObjectURL).toHaveBeenCalledWith(csv);
+
+    clickSpy.mockRestore();
+    vi.unstubAllGlobals();
+  });
+
   it('renders the fixed set of roles in the select', async () => {
     const wrapper = await mountPanel();
     const options = wrapper

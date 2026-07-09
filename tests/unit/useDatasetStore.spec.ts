@@ -73,4 +73,32 @@ describe('useDatasetStore — snapshot issue files (S124)', () => {
 
     expect(api.delete).toHaveBeenCalledWith('/admin/datasets/ds-1/snapshots/snap-1/files/f-1');
   });
+
+  it('downloadSnapshotFile GETs the admin file-download endpoint as a blob (member)', async () => {
+    const pdf = new Blob(['%PDF'], { type: 'application/pdf' });
+    (api.get as ReturnType<typeof vi.fn>).mockResolvedValue(pdf);
+    const store = useDatasetStore();
+
+    const result = await store.downloadSnapshotFile('ds-1', 'snap-1', 'f-1');
+
+    expect(api.get).toHaveBeenCalledWith(
+      '/admin/datasets/ds-1/snapshots/snap-1/files/f-1/download',
+      { responseType: 'blob' },
+    );
+    expect(result).toBe(pdf);
+  });
+
+  it('downloadSnapshotFile targets the primary id for the primary data file', async () => {
+    const csv = new Blob(['a,b\n1,2\n'], { type: 'text/csv' });
+    (api.get as ReturnType<typeof vi.fn>).mockResolvedValue(csv);
+    const store = useDatasetStore();
+
+    const result = await store.downloadSnapshotFile('ds-1', 'snap-1', 'primary');
+
+    expect(api.get).toHaveBeenCalledWith(
+      '/admin/datasets/ds-1/snapshots/snap-1/files/primary/download',
+      { responseType: 'blob' },
+    );
+    expect(result).toBe(csv);
+  });
 });

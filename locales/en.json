@@ -98,6 +98,7 @@
       "empty": "No files in this issue yet.",
       "add": "Add file",
       "delete": "Delete",
+      "download": "Download",
       "primary": "Primary data file",
       "confirmDelete": "Delete this file from the issue?",
       "roles": {

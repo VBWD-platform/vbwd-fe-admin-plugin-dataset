@@ -63,6 +63,14 @@
           </td>
           <td class="actions-cell">
             <button
+              type="button"
+              class="action-btn"
+              :data-testid="`issue-file-download-${file.id}`"
+              @click="download(file)"
+            >
+              {{ $t('dataset.issueFiles.download') }}
+            </button>
+            <button
               v-if="file.id !== PRIMARY_SNAPSHOT_FILE_ID"
               type="button"
               class="action-btn danger"
@@ -205,6 +213,27 @@ async function submitAttach(): Promise<void> {
     error.value = caught instanceof Error ? caught.message : String(caught);
   } finally {
     adding.value = false;
+  }
+}
+
+async function download(file: DatasetSnapshotFile): Promise<void> {
+  error.value = null;
+  try {
+    const blob = await store.downloadSnapshotFile(
+      props.datasetId,
+      props.snapshotId,
+      file.id,
+    );
+    if (typeof URL !== 'undefined' && typeof URL.createObjectURL === 'function') {
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = file.filename;
+      anchor.click();
+      URL.revokeObjectURL(url);
+    }
+  } catch (caught) {
+    error.value = caught instanceof Error ? caught.message : String(caught);
   }
 }
 

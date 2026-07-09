@@ -377,6 +377,24 @@ export const useDatasetStore = defineStore('dataset-admin', {
       );
     },
 
+    /**
+     * Download one file of an issue as a blob (admin, NOT entitlement-gated). The
+     * primary data file uses the synthetic `primary` id; members use their own id.
+     * Requesting `responseType: 'blob'` is load-bearing — without it the ApiClient
+     * parses the bytes as JSON and the object-URL download fails (same pitfall the
+     * snapshot `downloadSnapshot` action already avoids).
+     */
+    async downloadSnapshotFile(
+      datasetId: string,
+      snapshotId: string,
+      fileId: string,
+    ): Promise<Blob> {
+      return api.get<Blob>(
+        `/admin/datasets/${datasetId}/snapshots/${snapshotId}/files/${fileId}/download`,
+        { responseType: 'blob' },
+      );
+    },
+
     // ── Plans (which tariff plan grants access) ───────────────────────────────
     async fetchPlans(): Promise<void> {
       // The real subscription route is declared with a trailing slash
