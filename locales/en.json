@@ -35,6 +35,7 @@
       "editHeading": "Edit Dataset",
       "tabDetails": "Details",
       "tabDataset": "Dataset",
+      "tabDatasetPage": "Dataset page",
       "fieldTitle": "Title",
       "fieldSlug": "Slug",
       "fieldDescription": "Description",

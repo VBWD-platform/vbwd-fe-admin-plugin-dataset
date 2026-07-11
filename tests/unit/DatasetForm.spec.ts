@@ -19,6 +19,17 @@ vi.mock('@/api', () => ({
   },
 }));
 
+// Stub the whole cms-admin authoring surface so the unit test does not pull the
+// full CMS editor (TipTap / CodeMirror / preview iframe) into the mount. The
+// stub records the owner props the tab is mounted with.
+vi.mock('@plugins/cms-admin/src/authoring', () => ({
+  EntityPageTab: {
+    name: 'EntityPageTab',
+    template: '<div data-testid="entity-page-tab-stub" />',
+    props: ['ownerType', 'ownerId', 'slot'],
+  },
+}));
+
 const i18n = createI18n({
   legacy: false,
   locale: 'en',
@@ -134,6 +145,23 @@ describe('DatasetForm.vue — editor', () => {
     await wrapper.find('[data-testid="dataset-tab-archive"]').trigger('click');
     expect(hidden('dataset-archive-pane')).toBe(false);
     expect(wrapper.find('[data-testid="archive-stub"]').exists()).toBe(true);
+  });
+
+  it('reveals the Dataset page pane and mounts EntityPageTab with the dataset owner props', async () => {
+    const { wrapper } = await mountForm();
+    const hidden = (testId: string) =>
+      (wrapper.find(`[data-testid="${testId}"]`).element as HTMLElement).style.display === 'none';
+    // The third tab only exists in edit mode.
+    const pageTab = wrapper.find('[data-testid="dataset-tab-page"]');
+    expect(pageTab.exists()).toBe(true);
+    // The page pane starts hidden, revealed on tab click.
+    expect(hidden('dataset-page-pane')).toBe(true);
+    await pageTab.trigger('click');
+    expect(hidden('dataset-page-pane')).toBe(false);
+    const entityTab = wrapper.findComponent({ name: 'EntityPageTab' });
+    expect(entityTab.exists()).toBe(true);
+    expect(entityTab.props('ownerType')).toBe('dataset');
+    expect(entityTab.props('ownerId')).toBe('ds-1');
   });
 
   it('renders the core TagPicker and CustomFieldsEditor for entity_type "dataset"', async () => {

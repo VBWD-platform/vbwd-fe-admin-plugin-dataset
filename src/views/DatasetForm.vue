@@ -48,6 +48,16 @@
       >
         {{ $t('dataset.editor.tabDataset') }}
       </button>
+      <button
+        v-if="!isNew && datasetId"
+        type="button"
+        class="tab-btn"
+        :class="{ active: activeTab === 'page' }"
+        data-testid="dataset-tab-page"
+        @click="activeTab = 'page'"
+      >
+        {{ $t('dataset.editor.tabDatasetPage') }}
+      </button>
     </div>
 
     <!-- Details pane -->
@@ -217,6 +227,21 @@
         {{ $t('dataset.editor.saveFirst') }}
       </p>
     </div>
+
+    <!-- Dataset page pane — the CMS-backed entity page for this dataset. The
+         self-contained authoring tab (WYSIWYG + HTML/CSS + SEO + preview) is
+         reused from cms-admin; we just mount it with the owner props. -->
+    <div
+      v-show="activeTab === 'page'"
+      class="pane"
+      data-testid="dataset-page-pane"
+    >
+      <EntityPageTab
+        v-if="datasetId"
+        owner-type="dataset"
+        :owner-id="datasetId"
+      />
+    </div>
   </div>
 </template>
 
@@ -226,6 +251,7 @@ import { useRoute, useRouter } from 'vue-router';
 import TagPicker from '@/components/TagPicker.vue';
 import CustomFieldsEditor from '@/components/CustomFieldsEditor.vue';
 import SearchableTermSelect from '../../../cms-admin/src/components/SearchableTermSelect.vue';
+import { EntityPageTab } from '@plugins/cms-admin/src/authoring';
 import DatasetSnapshotArchive from '../components/DatasetSnapshotArchive.vue';
 import {
   useDatasetStore,
@@ -252,7 +278,7 @@ const store = useDatasetStore();
 const datasetId = ref<string>((route.params.id as string) ?? '');
 const isNew = computed(() => !datasetId.value);
 
-const activeTab = ref<'details' | 'archive'>('details');
+const activeTab = ref<'details' | 'archive' | 'page'>('details');
 const saving = ref(false);
 const error = ref<string | null>(null);
 
